@@ -5,7 +5,10 @@ import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
 
-n_theta = 10
+J = 1
+L = 64
+numIter = 10e6
+n_theta = 16
 theta_values = np.linspace(2*pi / n_theta, 2*pi, n_theta)
 
 def InitSpins(L: int):
@@ -50,12 +53,12 @@ def PlotXY(S: np.array):
     plt.colorbar().set_label('Spin orientation [rad]')
     grid_x, grid_y = np.meshgrid(Lrange, Lrange)
     print(np.shape(S), np.shape(grid_x), np.shape(grid_y))
-    plt.quiver([grid_x, grid_y], cos(S), sin(S))
+    plt.quiver(grid_x, grid_y, cos(S), sin(S), scale=70)
     plt.title('XY model state')
     plt.axis('off')
     plt.show()
 
 
-S = InitSpins(100)
+S = InitSpins(L)
 # print(S)
 PlotXY(S)
