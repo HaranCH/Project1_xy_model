@@ -58,7 +58,17 @@ def PlotXY(S: np.array):
     plt.axis('off')
     plt.show()
 
-
+def EnergyXY(S: np.array, J: float):
+    sum = 0
+    S_Up = np.roll(S, 1, axis=(0,1))
+    S_Right = np.roll(S, 1, axis=(1,0))
+    sum += (cos(S - S_Up))
+    sum += cos(S - S_Right)
+    print (np.sum(sum))
+    print("this ends here")
+    return (-J*np.sum(sum)) / len(S)**2
+    
 S = InitSpins(L)
+print(EnergyXY(S,J))
 # print(S)
 PlotXY(S)
