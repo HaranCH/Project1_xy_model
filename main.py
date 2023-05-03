@@ -68,6 +68,13 @@ def EnergyXY(S: np.array, J: float):
     print("this ends here")
     return (-J*np.sum(sum)) / len(S)**2
     
+def CvXY(Energy: np.array, Temperature: np.array):
+    Energy_shifted = np.roll(Energy, 1)
+    Energy_dif = (Energy - Energy_shifted)[1:]
+    Temp_shifted = np.roll(Temperature, 1)
+    Temp_dif = (Temperature - Temp_shifted)[1:]
+    return Energy_dif / Temp_dif
+
 S = InitSpins(L)
 print(EnergyXY(S,J))
 # print(S)
