@@ -1,5 +1,4 @@
 from numpy import cos, sin
-from energy_dif import energy_dif
 import copy
 import numpy as np
 from numpy import pi
@@ -18,34 +17,92 @@ def InitSpins(L: int):
             S[i,j] = np.random.choice(theta_values)
     return S
 
-def MetropolisXY(S: np.array, beta: float, J: float, numIter: int):
-    L = len(S[:,1])
+def MetropolisXY(S: np.array, beta: float, J: float, numIter: int, guesses_per_iter = 1):
+    # get size of matrix
+    L = len(S)
+
+    # new S, to be returned
     Snew = copy.deepcopy(S)
 
     for x in range(numIter):
         i, j = np.random.randint(0,L,2)
-        theta_old = Snew[i,j]
-        theta_new = np.random.choice(theta_values)
         
         N = np.zeros((4, 1)) # Neighbors
+        theta_old = Snew[i,j]
+        theta_new = np.random.choice(theta_values)
 
         N[0] = Snew[i,(j+1)%L]
         N[1] = Snew[(i-1)%L,j]
         N[2] = Snew[i,(j-1)%L]
         N[3] = Snew[(i+1)%L,j]
 
-        energydif = energy_dif(J, theta_new, theta_old, N)
+        # calculate energy dif
+        energy_new = np.sum(cos(N - theta_new))
+        energy_old = np.sum(cos(N - theta_old))
+        energy_dif = -J*(energy_new - energy_old)
 
         # probablity of getting new orientation
         prob = 0
-        if energydif > 0:
-            prob = np.exp(-beta * energydif)
+        if energy_dif > 0:
+            prob = np.exp(-beta * energy_dif)
         else:
             prob = 1
 
         val = np.random.rand()
         if  val <= prob:
             Snew[i,j] = theta_new
+    return Snew
+
+def MultMetropolisXY(S: np.array, beta: float, J: float, numIter: int = int(1e6), guessesPerIter:int = 1):
+    # iterate less if multiple guesses in iter
+    numIter //= guessesPerIter
+    
+    # get size of matrix
+    L = len(S)
+
+    # new S, to be returned
+    Snew = copy.deepcopy(S)
+
+    # iterate
+    for x in range(numIter):
+
+        # guess guessesPerIter coordinates
+        i, j = np.random.randint(0, L, size=(2,guessesPerIter))
+        
+        # find old and guess new theta values for guessed coordinates
+        theta_old = Snew[i,j]
+        theta_new = np.random.choice(theta_values,size=guessesPerIter)
+
+        # get neighbors (4 x guessesPerIter matrix)
+        N = np.array([
+            Snew[i,(j+1)%L],
+            Snew[(i-1)%L,j],
+            Snew[i,(j-1)%L],
+            Snew[(i+1)%L,j]
+        ])
+
+        # print(f'N = {N}')
+        # print(f'i = {i}')
+        # print(f'j = {j}')
+        # print(f'theta_new = {theta_new}')
+        # print(f'theta_old = {theta_old}')
+
+        # calculate energy dif
+        energy_new = cos(N - np.tile(theta_old, (4,1)))
+        energy_old = cos(N - np.tile(theta_new, (4,1)))
+        energy_dif = -J*(energy_old - energy_new).sum(axis=0)
+
+        # probablity of getting new orientation
+        prob = np.exp(-beta * energy_dif)
+
+        # get indices of guesses that should be kept
+        prob[energy_dif < 0] = 1
+
+        val = np.random.rand(guessesPerIter)
+
+        to_change = prob - val
+
+        Snew[i[to_change > 0], j[to_change > 0]] = theta_new[to_change > 0]
     return Snew
 
 def PlotXY(S: np.array):
@@ -59,7 +116,6 @@ def PlotXY(S: np.array):
     plt.colorbar().set_label('Spin orientation [rad]')
 
     grid_x, grid_y = np.meshgrid(Lrange, Lrange)
-    print(np.shape(S), np.shape(grid_x), np.shape(grid_y))
     plt.quiver(grid_x, grid_y, cos(S), sin(S), scale=70)
 
     plt.title('XY model state')
@@ -82,7 +138,7 @@ def CvXY(Energy: np.array, Temperature: np.array):
 def magXY(S: np.array):
     sum_cos = np.sum(cos(S))**2
     sum_sin = np.sum(sin(S))**2
-    return (1/(len(S)*4))(sum_cos + sum_sin)
+    return (1/(len(S)**4)) * (sum_cos + sum_sin)
 
 def CorrXY(S: np.array):
     Cr = np.zeros((len(S)//2,1))
@@ -119,13 +175,10 @@ def VortPlotXY(S: np.array, V: np.array):
     # find positions of positive ang vortices
     pos = np.argwhere(V > 1/2)
     neg = np.argwhere(V < -1/2)
-    print(pos)
-    print(pos.T)
 
     # get positions as two arrays for scatter plot
     pos_y, pos_x = pos.T - 0.5
     neg_y, neg_x = neg.T - 0.5
-    print(pos_x, pos_y)
 
     # plot scatter
     plt.scatter(pos_x, pos_y, marker='o', color='red', label='Positive vortex')
@@ -139,7 +192,7 @@ def VortPlotXY(S: np.array, V: np.array):
 
 
 S = InitSpins(L)
-S = MetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e6))
+S = MultMetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e6), guessesPerIter=100)
 corr = CorrXY(S)
 plt.plot(range(1, len(corr)+1), corr)
 
@@ -148,50 +201,48 @@ plt.show()
 V, NumVort = VortXY(S)
 VortPlotXY(S, V)
 plt.show()
-VortPlotXY(np.roll(S,10,axis=(0,1)), np.roll(V,10,axis=(0,1)))
+
+betaA = 1/0.02
+betaB = 1/2
+numTPoints = 20
+KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
+numMetropolis = 100
+avg_M = np.zeros((numTPoints, 1))
+avg_E = np.zeros((numTPoints, 1))
+avg_Corr = np.zeros((numTPoints, 1))
+SHot = S
+for i in range(numTPoints):
+    for j in range(numMetropolis):
+        beta = 1/KTPoints[i]
+        SHot = MultMetropolisXY(S, beta, J, numIter=int(1e4), guessesPerIter=100)
+        avg_E[i] += EnergyXY(SHot, J)
+        avg_M[i] += magXY(SHot)
+        # avg_C[i] += CvXY()
+    avg_E[i] /= numMetropolis
+    avg_M[i] /= numMetropolis
+    S = SHot
+    # avg_C[i] /= numMetropolis
+avg_C = CvXY(avg_E, KTPoints)
+
+plt.plot(KTPoints, avg_E)
+plt.xlabel('Kb*T')
+plt.ylabel('E')
 plt.show()
 
-# betaA = 1/0.02
-# betaB = 1/2
-# numTPoints = 20
-# KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
-# numMetropolis = 20
-# avg_M = np.zeros((numTPoints, 1))
-# avg_E = np.zeros((numTPoints, 1))
-# avg_Corr = np.zeros((numTPoints, 1))
-# for i in range(numTPoints):
-#     for j in range(numMetropolis):
-#         beta = 1/KTPoints[i]
-#         S = MetropolisXY(S, beta, J, numIter=int(1e3))
-#         avg_E[i] += EnergyXY(S, J)
-#         avg_M[i] += magXY(S)
-#         # avg_C[i] += CvXY()
-#     avg_E[i] /= numMetropolis
-#     avg_M[i] /= numMetropolis
-#     # avg_C[i] /= numMetropolis
-# avg_C = CvXY(avg_E, KTPoints)
-# plt.subplot(1, 3, 1)
-# plt.plot(KTPoints, avg_E)
-# plt.xlabel('Kb*T')
-# plt.ylabel('E')
+plt.plot(KTPoints, avg_M)
+plt.xlabel('Kb*T')
+plt.ylabel('M')
+plt.show()
 
-# plt.subplot(1, 3, 2)
-# plt.plot(KTPoints, avg_M)
-# plt.xlabel('Kb*T')
-# plt.ylabel('M')
+plt.plot(KTPoints[:-1], avg_C)
+plt.xlabel('Kb*T')
+plt.ylabel('Cv')
+plt.show()
 
-# plt.subplot(1, 3, 3)
-# plt.plot(KTPoints[:-1], avg_C)
-# plt.xlabel('Kb*T')
-# plt.ylabel('Cv')
+corr = CorrXY(S)
+plt.plot(range(len(corr)), corr)
+plt.show()
 
-# plt.show()
-
-# corr = CorrXY(S)
-# plt.plot(range(len(corr)), corr)
-# plt.show()
-
-# V, NumVort = VortXY(S)
-# print(V)
-# print(NumVort)
-# VortPlotXY(S, V)
+V, NumVort = VortXY(S)
+VortPlotXY(S, V)
+plt.show()
