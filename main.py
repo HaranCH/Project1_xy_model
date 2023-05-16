@@ -6,12 +6,12 @@ from numpy import pi
 import matplotlib.pyplot as plt
 
 J = 1
-L = 64
+L = 32
 n_theta = 16
-theta_values = np.linspace(2*pi / n_theta, 2*pi, n_theta)
+theta_values = np.linspace(2*pi / n_theta, 2*pi, n_theta, dtype=float)
 
 def InitSpins(L: int):
-    S = np.zeros([L, L], float)
+    S = np.zeros([L, L], dtype=float)
     for i in range(L):
         for j in range(L):
             S[i,j] = np.random.choice(theta_values)
@@ -57,7 +57,7 @@ def PlotXY(S: np.array):
     plt.quiver(grid_x, grid_y, cos(S), sin(S), scale=70)
     plt.title('XY model state')
     plt.axis('off')
-    plt.show()
+    #plt.show()
 
 def EnergyXY(S: np.array, J: float):
     sum = 0
@@ -77,7 +77,7 @@ def CvXY(Energy: np.array, Temperature: np.array):
 def magXY(S: np.array):
     sum_cos = np.sum(cos(S))**2
     sum_sin = np.sum(sin(S))**2
-    return (1/(len(S)**4))*(sum_cos + sum_sin)
+    return (1/(len(S)*4))(sum_cos + sum_sin)
 
 def CorrXY(S: np.array):
     sum = 0
@@ -89,42 +89,101 @@ def CorrXY(S: np.array):
         Cr[r] /= len(S)**2
     return Cr
 
+def VortXY(S: np.array):
+    S_Up = np.roll(S, 1, axis=1)
+    S_Right = np.roll(S, 1, axis=0)
+    S_Ri_Up = np.roll(S, 1, axis=(0,1))
+
+    # plt.subplot(1,2,1)
+    # PlotXY(S_Up)
+
+    # plt.subplot(1,2,2)
+    # PlotXY(S)
+
+    # plt.show()
+
+    V1 = S_Right - S
+    V2 = S_Ri_Up - S_Right
+    V3 = S_Up - S_Ri_Up
+    V4 = S - S_Up
+
+    for Vi in [V1, V2, V3, V4]:
+        Vi[np.abs(Vi) > pi] = -(np.sign(Vi[np.abs(Vi) > pi]) * 2*pi - Vi[np.abs(Vi) > pi])
+        # Vi[np.abs(Vi) <= pi/4] = 0
+    
+
+
+    V = V1 + V2 + V3 + V4
+
+    V /= 2*pi
+    return V, (np.sum(V))
+
+def VortPlotXY(V: np.array):
+    L = len(V[:,1])
+    Lrange = [k for k in range(L)]
+    plt.imshow(V)
+    grid_x, grid_y = np.meshgrid(Lrange, Lrange)
+    print(np.shape(V), np.shape(grid_x), np.shape(grid_y))
+    plt.title('Positions of vorticies')
+    plt.axis('off')
+    #plt.show()
+
 S = InitSpins(L)
-S = MetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e4))
-
-betaA = 1/0.02
-betaB = 1/2
-numTPoints = 20
-KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
-numMetropolis = 20
-avg_C = np.zeros((numTPoints, 1))
-avg_M = np.zeros((numTPoints, 1))
-avg_E = np.zeros((numTPoints, 1))
-for i in range(numTPoints):
-    for j in range(numMetropolis):
-        beta = 1/KTPoints[i]
-        S = MetropolisXY(S, beta, J, numIter=int(1e4))
-        avg_E[i] += EnergyXY(S, J)
-        avg_M[i] += magXY(S)
-        # avg_C[i] += CvXY()
-    avg_E[i] /= numMetropolis
-    avg_M[i] /= numMetropolis
-    # avg_C[i] /= numMetropolis
-
-plt.subplot(1, 2, 1)
-plt.plot(KTPoints, avg_E)
-plt.subplot(1, 2, 2)
-plt.plot(KTPoints, avg_M)
+S = MetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e5))
+corr = CorrXY(S)
+plt.plot(range(len(corr)), corr)
 plt.show()
 
-# print(f'Energy: {EnergyXY(S, J)}')
-# print(f'Mag: {magXY(S)}')
-# S = MetropolisXY(S, Beta, J)
-# PlotXY(S)
-# Beta = 1/10
-# numIter = 10e4
-# for i in range(iters):
-#     MetropolisXY(S, Beta, J)
+V, NumVort = VortXY(S)
+print(V)
+print(NumVort)
+plt.subplot(1, 2, 1)
+PlotXY(S)
+plt.subplot(1, 2, 2)
+VortPlotXY(V)
+plt.show()
 
+# betaA = 1/0.02
+# betaB = 1/2
+# numTPoints = 20
+# KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
+# numMetropolis = 20
+# avg_M = np.zeros((numTPoints, 1))
+# avg_E = np.zeros((numTPoints, 1))
+# avg_Corr = np.zeros((numTPoints, 1))
+# for i in range(numTPoints):
+#     for j in range(numMetropolis):
+#         beta = 1/KTPoints[i]
+#         S = MetropolisXY(S, beta, J, numIter=int(1e3))
+#         avg_E[i] += EnergyXY(S, J)
+#         avg_M[i] += magXY(S)
+#         # avg_C[i] += CvXY()
+#     avg_E[i] /= numMetropolis
+#     avg_M[i] /= numMetropolis
+#     # avg_C[i] /= numMetropolis
+# avg_C = CvXY(avg_E, KTPoints)
+# plt.subplot(1, 3, 1)
+# plt.plot(KTPoints, avg_E)
+# plt.xlabel('Kb*T')
+# plt.ylabel('E')
 
-# PlotXY(S)
+# plt.subplot(1, 3, 2)
+# plt.plot(KTPoints, avg_M)
+# plt.xlabel('Kb*T')
+# plt.ylabel('M')
+
+# plt.subplot(1, 3, 3)
+# plt.plot(KTPoints[:-1], avg_C)
+# plt.xlabel('Kb*T')
+# plt.ylabel('Cv')
+
+# plt.show()
+
+# corr = CorrXY(S)
+# plt.plot(range(len(corr)), corr)
+# plt.show()
+
+# V, NumVort = VortXY(S)
+# print(V)
+# print(NumVort)
+# VortPlotXY(S, V)
