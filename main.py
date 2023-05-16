@@ -4,6 +4,7 @@ import copy
 import numpy as np
 from numpy import pi
 import matplotlib.pyplot as plt
+import matplotlib
 
 J = 1
 L = 32
@@ -22,7 +23,7 @@ def MetropolisXY(S: np.array, beta: float, J: float, numIter: int):
     Snew = copy.deepcopy(S)
 
     for x in range(numIter):
-        i, j = np.random.randint(0,L-1,2)
+        i, j = np.random.randint(0,L,2)
         theta_old = Snew[i,j]
         theta_new = np.random.choice(theta_values)
         
@@ -50,14 +51,18 @@ def MetropolisXY(S: np.array, beta: float, J: float, numIter: int):
 def PlotXY(S: np.array):
     L = len(S[:,1])
     Lrange = [k for k in range(L)]
-    plt.imshow(S)
+
+    color_set = ['lightcoral', 'moccasin', 'palegreen', 'aquamarine', 'lightskyblue', 'plum', 'lightcoral']
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", color_set)
+    plot = plt.imshow(S, cmap=cmap)
+
     plt.colorbar().set_label('Spin orientation [rad]')
+
     grid_x, grid_y = np.meshgrid(Lrange, Lrange)
     print(np.shape(S), np.shape(grid_x), np.shape(grid_y))
     plt.quiver(grid_x, grid_y, cos(S), sin(S), scale=70)
+
     plt.title('XY model state')
-    plt.axis('off')
-    #plt.show()
 
 def EnergyXY(S: np.array, J: float):
     sum = 0
@@ -80,27 +85,18 @@ def magXY(S: np.array):
     return (1/(len(S)*4))(sum_cos + sum_sin)
 
 def CorrXY(S: np.array):
-    sum = 0
     Cr = np.zeros((len(S)//2,1))
     for r in range(1, len(Cr)):
         S_Up = np.roll(S, r, axis=(0,1))
         S_Right = np.roll(S, r, axis=(1,0))
         Cr[r] = np.sum(cos(S - S_Up)) + np.sum(cos(S - S_Right))
         Cr[r] /= len(S)**2
-    return Cr
+    return Cr[1:]
 
 def VortXY(S: np.array):
     S_Up = np.roll(S, 1, axis=1)
     S_Right = np.roll(S, 1, axis=0)
     S_Ri_Up = np.roll(S, 1, axis=(0,1))
-
-    # plt.subplot(1,2,1)
-    # PlotXY(S_Up)
-
-    # plt.subplot(1,2,2)
-    # PlotXY(S)
-
-    # plt.show()
 
     V1 = S_Right - S
     V2 = S_Ri_Up - S_Right
@@ -109,38 +105,50 @@ def VortXY(S: np.array):
 
     for Vi in [V1, V2, V3, V4]:
         Vi[np.abs(Vi) > pi] = -(np.sign(Vi[np.abs(Vi) > pi]) * 2*pi - Vi[np.abs(Vi) > pi])
-        # Vi[np.abs(Vi) <= pi/4] = 0
-    
-
 
     V = V1 + V2 + V3 + V4
 
-    V /= 2*pi
+    V /= (2*pi)
+    
     return V, (np.sum(V))
 
-def VortPlotXY(V: np.array):
-    L = len(V[:,1])
-    Lrange = [k for k in range(L)]
-    plt.imshow(V)
-    grid_x, grid_y = np.meshgrid(Lrange, Lrange)
-    print(np.shape(V), np.shape(grid_x), np.shape(grid_y))
-    plt.title('Positions of vorticies')
-    plt.axis('off')
-    #plt.show()
+def VortPlotXY(S: np.array, V: np.array):
+    # plot the state
+    PlotXY(S)
+
+    # find positions of positive ang vortices
+    pos = np.argwhere(V > 1/2)
+    neg = np.argwhere(V < -1/2)
+    print(pos)
+    print(pos.T)
+
+    # get positions as two arrays for scatter plot
+    pos_y, pos_x = pos.T - 0.5
+    neg_y, neg_x = neg.T - 0.5
+    print(pos_x, pos_y)
+
+    # plot scatter
+    plt.scatter(pos_x, pos_y, marker='o', color='red', label='Positive vortex')
+    plt.scatter(neg_x, neg_y, marker='D', color='blue', label = 'Negative vortex')
+
+    # set title
+    plt.title('XY model state, with vortex positions marked')
+
+    # set legend
+    plt.legend(bbox_to_anchor=(-0.1, 1))
+
 
 S = InitSpins(L)
-S = MetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e5))
+S = MetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e6))
 corr = CorrXY(S)
-plt.plot(range(len(corr)), corr)
+plt.plot(range(1, len(corr)+1), corr)
+
 plt.show()
 
 V, NumVort = VortXY(S)
-print(V)
-print(NumVort)
-plt.subplot(1, 2, 1)
-PlotXY(S)
-plt.subplot(1, 2, 2)
-VortPlotXY(V)
+VortPlotXY(S, V)
+plt.show()
+VortPlotXY(np.roll(S,10,axis=(0,1)), np.roll(V,10,axis=(0,1)))
 plt.show()
 
 # betaA = 1/0.02
