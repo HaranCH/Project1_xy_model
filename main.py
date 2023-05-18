@@ -5,8 +5,10 @@ from numpy import pi
 import matplotlib.pyplot as plt
 import matplotlib
 
+matplotlib.rcParams.update({'font.size': 24})
+
 J = 1
-L = 32
+L = 64
 n_theta = 16
 theta_values = np.linspace(2*pi / n_theta, 2*pi, n_theta, dtype=float)
 
@@ -119,12 +121,13 @@ def PlotXY(S: np.array):
     plt.quiver(grid_x, grid_y, cos(S), sin(S), scale=70)
 
     plt.title('XY model state')
+    plt.axis('off')
 
 def EnergyXY(S: np.array, J: float):
     sum = 0
-    S_Up = np.roll(S, 1, axis=(0,1))
-    S_Right = np.roll(S, 1, axis=(1,0))
-    sum += (cos(S - S_Up))
+    S_Up = np.roll(S, 1, axis=0)
+    S_Right = np.roll(S, 1, axis=1)
+    sum += cos(S - S_Up)
     sum += cos(S - S_Right)
     return (-J*np.sum(sum)) / len(S)**2
     
@@ -140,14 +143,24 @@ def magXY(S: np.array):
     sum_sin = np.sum(sin(S))**2
     return (1/(len(S)**4)) * (sum_cos + sum_sin)
 
-def CorrXY(S: np.array):
+def CorrXY(S: np.array, fname: str):
     Cr = np.zeros((len(S)//2,1))
+
+    # calc correlation for each distance r
     for r in range(1, len(Cr)):
-        S_Up = np.roll(S, r, axis=(0,1))
-        S_Right = np.roll(S, r, axis=(1,0))
+        # r-distant neighbors
+        S_Up = np.roll(S, r, axis=0)
+        S_Right = np.roll(S, r, axis=1)
         Cr[r] = np.sum(cos(S - S_Up)) + np.sum(cos(S - S_Right))
-        Cr[r] /= len(S)**2
-    return Cr[1:]
+        Cr[r] /= ((len(S)**4 - len(S)**2)/2)
+    
+    # remove first element
+    Cr = Cr[1:]
+    plt.plot(range(1, len(Cr)+1), Cr)
+    plt.xlabel('Distance in cells')
+    plt.ylabel('Correlation')
+    plt.title('Correlation as a function of distance')
+    savefig(fname)
 
 def VortXY(S: np.array):
     S_Up = np.roll(S, 1, axis=1)
@@ -166,7 +179,7 @@ def VortXY(S: np.array):
 
     V /= (2*pi)
     
-    return V, (np.sum(V))
+    return V, (np.count_nonzero(np.abs(V) > 1/2))
 
 def VortPlotXY(S: np.array, V: np.array):
     # plot the state
@@ -190,59 +203,104 @@ def VortPlotXY(S: np.array, V: np.array):
     # set legend
     plt.legend(bbox_to_anchor=(-0.1, 1))
 
+def savefig(fname: str):
+    plt.savefig(fname + '.png', format='png', dpi=300)
+    plt.savefig(fname + '.svg', format='svg')
+    plt.show()
 
+# initialize
 S = InitSpins(L)
-S = MultMetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e6), guessesPerIter=100)
-corr = CorrXY(S)
-plt.plot(range(1, len(corr)+1), corr)
 
-plt.show()
+PlotXY(S)
+savefig('init')
+
+
+# plot correlation
+CorrXY(S, 'corr_init')
+
+S = MultMetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e7), guessesPerIter=100)
+
+PlotXY(S)
+savefig('cold')
+
+
+# plot correlation
+CorrXY(S, 'corr_cold')
 
 V, NumVort = VortXY(S)
 VortPlotXY(S, V)
-plt.show()
+savefig('vort_cold')
+
 
 betaA = 1/0.02
 betaB = 1/2
 numTPoints = 20
 KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
-numMetropolis = 100
+numMetropolis = 200
 avg_M = np.zeros((numTPoints, 1))
 avg_E = np.zeros((numTPoints, 1))
+avg_NumVort = np.zeros((numTPoints, 1))
 avg_Corr = np.zeros((numTPoints, 1))
 SHot = S
 for i in range(numTPoints):
     for j in range(numMetropolis):
         beta = 1/KTPoints[i]
         SHot = MultMetropolisXY(S, beta, J, numIter=int(1e4), guessesPerIter=100)
+        V, numVort = VortXY(SHot)
+
         avg_E[i] += EnergyXY(SHot, J)
         avg_M[i] += magXY(SHot)
-        # avg_C[i] += CvXY()
+        avg_NumVort[i] += numVort
     avg_E[i] /= numMetropolis
     avg_M[i] /= numMetropolis
+    avg_NumVort[i] /= numMetropolis
     S = SHot
-    # avg_C[i] /= numMetropolis
+
 avg_C = CvXY(avg_E, KTPoints)
 
 plt.plot(KTPoints, avg_E)
-plt.xlabel('Kb*T')
-plt.ylabel('E')
-plt.show()
+plt.xlabel('$K_b T$')
+plt.ylabel('$E$')
+savefig('energy')
+
 
 plt.plot(KTPoints, avg_M)
-plt.xlabel('Kb*T')
-plt.ylabel('M')
-plt.show()
+plt.xlabel('$K_b T$')
+plt.ylabel('$\langle M \\rangle/N^2$')
+savefig('mag')
+
 
 plt.plot(KTPoints[:-1], avg_C)
-plt.xlabel('Kb*T')
-plt.ylabel('Cv')
-plt.show()
+plt.xlabel('$K_b T$')
+plt.ylabel('$C_v$')
+savefig('cv')
 
-corr = CorrXY(S)
-plt.plot(range(len(corr)), corr)
-plt.show()
+
+plt.plot(KTPoints, avg_NumVort)
+plt.xlabel('kT')
+plt.ylabel('Number of vortices')
+plt.title('Number of vortices as a function of temperature')
+savefig('num_vort')
+
+
+plt.semilogy(KTPoints, avg_NumVort)
+plt.xlabel('log kT')
+plt.ylabel('log Number of vortices')
+plt.title('log-log graph: Number of vortices as a function of temperature')
+savefig('log_num_vort')
+
+
+# plot correlation
+corr = CorrXY(S, 'corr_hot')
+
 
 V, NumVort = VortXY(S)
 VortPlotXY(S, V)
-plt.show()
+savefig('vort_hot')
+
+
+# graph num vort as function of temp
+betaA = 1/0.02
+betaB = 1/2
+numTPoints = 20
+KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
