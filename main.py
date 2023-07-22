@@ -5,7 +5,7 @@ from numpy import pi
 import matplotlib.pyplot as plt
 import matplotlib
 
-matplotlib.rcParams.update({'font.size': 24})
+matplotlib.rcParams.update({'font.size': 18})
 
 J = 1
 L = 64
@@ -144,7 +144,7 @@ def magXY(S: np.array):
     return (1/(len(S)**4)) * (sum_cos + sum_sin)
 
 def CorrXY(S: np.array, fname: str):
-    Cr = np.zeros((len(S)//2,1))
+    Cr = np.zeros((len(S),1))
 
     # calc correlation for each distance r
     for r in range(1, len(Cr)):
@@ -153,10 +153,11 @@ def CorrXY(S: np.array, fname: str):
         S_Right = np.roll(S, r, axis=1)
         Cr[r] = np.sum(cos(S - S_Up)) + np.sum(cos(S - S_Right))
         Cr[r] /= ((len(S)**4 - len(S)**2)/2)
+        Cr[r] += 1
     
     # remove first element
     Cr = Cr[1:]
-    plt.plot(range(1, len(Cr)+1), Cr)
+    plt.semilogy(range(1, len(Cr)+1), Cr)
     plt.xlabel('Distance in cells')
     plt.ylabel('Correlation')
     plt.title('Correlation as a function of distance')
@@ -198,14 +199,16 @@ def VortPlotXY(S: np.array, V: np.array):
     plt.scatter(neg_x, neg_y, marker='D', color='blue', label = 'Negative vortex')
 
     # set title
-    plt.title('XY model state, with vortex positions marked')
+    plt.title(f'XY model state, with vortex positions marked\nTurbulence = {V.sum()}')
 
     # set legend
     plt.legend(bbox_to_anchor=(-0.1, 1))
 
+    # print total turbulence value
+
 def savefig(fname: str):
-    plt.savefig(fname + '.png', format='png', dpi=300)
-    plt.savefig(fname + '.svg', format='svg')
+    plt.savefig(fname + '.png', format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(fname + '.svg', format='svg', bbox_inches='tight')
     plt.show()
 
 # initialize
@@ -233,7 +236,7 @@ savefig('vort_cold')
 
 
 betaA = 1/0.02
-betaB = 1/2
+betaB = 1/0.2
 numTPoints = 20
 KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
 numMetropolis = 200
@@ -261,18 +264,21 @@ avg_C = CvXY(avg_E, KTPoints)
 plt.plot(KTPoints, avg_E)
 plt.xlabel('$K_b T$')
 plt.ylabel('$E$')
+plt.title('Energy of the system as a function of temperature')
 savefig('energy')
 
 
 plt.plot(KTPoints, avg_M)
 plt.xlabel('$K_b T$')
 plt.ylabel('$\langle M \\rangle/N^2$')
+plt.title('Average magnetization as a function of temperature')
 savefig('mag')
 
 
 plt.plot(KTPoints[:-1], avg_C)
 plt.xlabel('$K_b T$')
 plt.ylabel('$C_v$')
+plt.title('Specific heat in constant volume as a function of temperature')
 savefig('cv')
 
 
@@ -284,9 +290,9 @@ savefig('num_vort')
 
 
 plt.semilogy(KTPoints, avg_NumVort)
-plt.xlabel('log kT')
-plt.ylabel('log Number of vortices')
-plt.title('log-log graph: Number of vortices as a function of temperature')
+plt.xlabel('kT')
+plt.ylabel('Number of vortices')
+plt.title('semi-log-y graph: Number of vortices as a function of temperature')
 savefig('log_num_vort')
 
 
