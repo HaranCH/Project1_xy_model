@@ -199,7 +199,7 @@ def VortPlotXY(S: np.array, V: np.array):
     plt.scatter(neg_x, neg_y, marker='D', color='blue', label = 'Negative vortex')
 
     # set title
-    plt.title(f'XY model state, with vortex positions marked\nTurbulence = {V.sum()}')
+    plt.title(f'XY model state, with vortex positions marked\nTotal Vorticity = {V.sum()}')
 
     # set legend
     plt.legend(bbox_to_anchor=(-0.1, 1))
@@ -219,6 +219,7 @@ savefig('init')
 
 
 # plot correlation
+plt.grid()
 CorrXY(S, 'corr_init')
 
 S = MultMetropolisXY(S, beta=1/0.02, J=J, numIter=int(1e7), guessesPerIter=100)
@@ -228,6 +229,7 @@ savefig('cold')
 
 
 # plot correlation
+plt.grid()
 CorrXY(S, 'corr_cold')
 
 V, NumVort = VortXY(S)
@@ -236,7 +238,7 @@ savefig('vort_cold')
 
 
 betaA = 1/0.02
-betaB = 1/0.2
+betaB = 1/2.0
 numTPoints = 20
 KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
 numMetropolis = 200
@@ -265,6 +267,7 @@ plt.plot(KTPoints, avg_E)
 plt.xlabel('$K_b T$')
 plt.ylabel('$E$')
 plt.title('Energy of the system as a function of temperature')
+plt.grid()
 savefig('energy')
 
 
@@ -272,6 +275,7 @@ plt.plot(KTPoints, avg_M)
 plt.xlabel('$K_b T$')
 plt.ylabel('$\langle M \\rangle/N^2$')
 plt.title('Average magnetization as a function of temperature')
+plt.grid()
 savefig('mag')
 
 
@@ -279,13 +283,16 @@ plt.plot(KTPoints[:-1], avg_C)
 plt.xlabel('$K_b T$')
 plt.ylabel('$C_v$')
 plt.title('Specific heat in constant volume as a function of temperature')
+plt.grid()
 savefig('cv')
 
 
+# graph num vort as function of temp
 plt.plot(KTPoints, avg_NumVort)
 plt.xlabel('kT')
 plt.ylabel('Number of vortices')
 plt.title('Number of vortices as a function of temperature')
+plt.grid()
 savefig('num_vort')
 
 
@@ -293,20 +300,15 @@ plt.semilogy(KTPoints, avg_NumVort)
 plt.xlabel('kT')
 plt.ylabel('Number of vortices')
 plt.title('semi-log-y graph: Number of vortices as a function of temperature')
+plt.grid()
 savefig('log_num_vort')
 
 
 # plot correlation
+plt.grid()
 corr = CorrXY(S, 'corr_hot')
 
 
 V, NumVort = VortXY(S)
 VortPlotXY(S, V)
 savefig('vort_hot')
-
-
-# graph num vort as function of temp
-betaA = 1/0.02
-betaB = 1/2
-numTPoints = 20
-KTPoints = np.linspace(1/betaA, 1/betaB, numTPoints)
