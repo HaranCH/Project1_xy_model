@@ -144,7 +144,7 @@ def magXY(S: np.array):
     return (1/(len(S)**4)) * (sum_cos + sum_sin)
 
 def CorrXY(S: np.array, fname: str):
-    Cr = np.zeros((len(S),1))
+    Cr = np.zeros((len(S)//2,1))
 
     # calc correlation for each distance r
     for r in range(1, len(Cr)):
@@ -152,12 +152,11 @@ def CorrXY(S: np.array, fname: str):
         S_Up = np.roll(S, r, axis=0)
         S_Right = np.roll(S, r, axis=1)
         Cr[r] = np.sum(cos(S - S_Up)) + np.sum(cos(S - S_Right))
-        Cr[r] /= ((len(S)**4 - len(S)**2)/2)
-        Cr[r] += 1
+        Cr[r] /= (len(S)**4)
     
     # remove first element
     Cr = Cr[1:]
-    plt.semilogy(range(1, len(Cr)+1), Cr)
+    plt.plot(range(1, len(Cr)+1), Cr)
     plt.xlabel('Distance in cells')
     plt.ylabel('Correlation')
     plt.title('Correlation as a function of distance')
