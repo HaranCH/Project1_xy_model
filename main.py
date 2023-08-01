@@ -286,19 +286,20 @@ plt.grid()
 savefig('cv')
 
 
-# graph num vort as function of temp
-plt.plot(KTPoints, avg_NumVort)
-plt.xlabel('kT')
-plt.ylabel('Number of vortices')
-plt.title('Number of vortices as a function of temperature')
-plt.grid()
-savefig('num_vort')
+# # graph num vort as function of temp
+# plt.plot(1/KTPoints, avg_NumVort)
+# plt.xlabel('kT')
+# plt.ylabel('Number of vortices')
+# plt.title('Number of vortices as a function of temperature')
+# plt.grid()
+# savefig('num_vort')
 
 
-plt.semilogy(KTPoints, avg_NumVort)
-plt.xlabel('kT')
-plt.ylabel('Number of vortices')
-plt.title('semi-log-y graph: Number of vortices as a function of temperature')
+plt.plot(1/KTPoints, np.log(avg_NumVort))
+plt.xlim(0.4,1.2)
+plt.xlabel('$(kT)^{-1}$')
+plt.ylabel('$ln($Number of vortices$)$')
+plt.title('$ln($Number of vortices$)$ as a function of $beta=(kT)^{-1}$')
 plt.grid()
 savefig('log_num_vort')
 
